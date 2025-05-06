@@ -1,0 +1,52 @@
+services:
+  nats-jetstream:
+    container_name: nats-jetstream
+    image: nats
+    volumes:
+      - nats-single-node:/data
+    ports:
+      - "4221:4222"
+      - "8221:8222"
+    command: "--name nats-jestream --http_port 8222 -js --sd /data"
+    networks: ["nats-jetstream"]
+
+  exporter:
+    container_name: nats-prometheus-exporter
+    image: natsio/prometheus-nats-exporter:latest
+    ports:
+      - "7777:7777"
+    networks: ["nats-jetstream"]
+    command: "-varz -jsz=all http://nats-jetstream:8222"
+    depends_on: ["nats-jetstream"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yaml:/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+    depends_on: ["exporter"]
+    networks: ["nats-jetstream"]
+
+  grafana:
+    container_name: grafana-dashboard
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on: ["exporter"]
+    networks: ["nats-jetstream"]
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+networks:
+  nats-jetstream:
+    name: nats-jetstream
+
+volumes:
+  nats-single-node:
+    external: true

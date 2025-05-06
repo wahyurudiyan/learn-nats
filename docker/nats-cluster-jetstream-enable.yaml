@@ -1,0 +1,82 @@
+services:
+  nats1:
+    container_name: nats1
+    image: nats
+    volumes:
+      - nats1:/data
+    ports:
+      - "4221:4222"
+      - "8221:8222"
+    command: "--name nats1 --cluster_name NATS --cluster nats://0.0.0.0:4245 --routes nats://nats2:4245,nats://nats3:4245 --http_port 8222 -js --sd /data"
+    networks: ["nats-jetstream"]
+
+  nats2:
+    container_name: nats2
+    image: nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats2:/data
+    command: "--name nats2 --cluster_name NATS --cluster nats://0.0.0.0:4245 --routes nats://nats1:4245,nats://nats3:4245 --http_port 8222 -js --sd /data"
+    networks: ["nats-jetstream"]
+    depends_on: ["nats1"]
+    
+  nats3:
+    container_name: nats3
+    image: nats
+    ports:
+      - "4223:4222"
+      - "8223:8222"
+    volumes:
+      - nats3:/data
+    command: "--name nats3 --cluster_name NATS --cluster nats://0.0.0.0:4245 --routes nats://nats1:4245,nats://nats2:4245 --http_port 8222 -js --sd /data"
+    networks: ["nats-jetstream"]
+    depends_on: ["nats1"]
+
+  exporter:
+    container_name: nats-prometheus-exporter
+    image: natsio/prometheus-nats-exporter:latest
+    ports:
+      - "7777:7777"
+    networks: ["nats-jetstream"]
+    command: "-varz -jsz=all http://nats1:8222 http://nats2:8222 http://nats3:8222"
+    depends_on: ["nats1", "nats2", "nats3"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yaml:/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+    depends_on: ["exporter"]
+    networks: ["nats-jetstream"]
+
+  grafana:
+    container_name: grafana-dashboard
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on: ["exporter"]
+    networks: ["nats-jetstream"]
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+networks:
+  nats-jetstream:
+    name: nats-jetstream
+
+volumes:
+  nats1:
+    external: true
+  nats2:
+    external: true
+  nats3:
+    external: true
+  grafana-storage:
+    external: true
