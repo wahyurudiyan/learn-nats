@@ -1,5 +1,5 @@
 # Learn NATS as Message Stream Infrastructure Platform
-NATS is a message stream infrastructure that implemented in my company. This repository contains any code that will guide about how to use and operating NATS.
+NATS is a message stream infrastructure that implemented in my company. This repository contains any code that will guide my team about how to use and operating NATS.
 
 ## Project Setup
 Before starting all infrastructure configuration, make sure Docker and Docker Compose already installed in your Laptop/PC. Then you need several infrastructure platform such as:
